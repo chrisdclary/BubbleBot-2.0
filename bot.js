@@ -36,30 +36,64 @@ bot.on("messageCreate", async msg => {
                 break;
             
             case 'queue': // show queue
+                if ( q.isEmpty() ) {
+                    bot.createMessage(textChannel, `\`\`\`Queue is empty.\`\`\``);
+                } else {
+                    showQueue(textChannel);
+                }
+                
                 break;
             
             case 'remove': // remove specific song from queue
+                if ( q.isEmpty() ) {
+                    bot.createMessage(textChannel, `\`\`\`Queue is empty\`\`\``);
+                    break;
+                }
+                var num = parseInt(args[0], 10);
+                console.log(num);
+                if ( isNaN(num) || num < 1 || q.size() < num ) {
+                    bot.createMessage(textChannel, `\`\`\`Can't remove that from the queue\`\`\``);
+                } else {
+                    remove(textChannel, num);
+                }
                 break;
             
             case 'skip':
+                connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+                var voiceChannel = msg.member.voiceState.channelID;
+                if ( !connection ) {
+                    bot.createMessage(textChannel, `\`\`\`Not playing music rn.\`\`\``);
+                } else {
+                    var botVC = parseInt(connection.channelID, 10);
+                    var memberVC = parseInt(voiceChannel, 10);
+                    console.log(botVC);
+                    console.log(memberVC);
+                    if ( botVC == memberVC ) {
+                        connection.stopPlaying();
+
+                    } else {
+                        bot.createMessage(textChannel, `\`\`\`Must be connected to VC to skip.\`\`\``);
+                    }
+                }
+                
                 break;
             
             case 'play':
                 if ( args.length > 0 ){
                     if ( ytdl.validateURL(args[0])){
-                        q.enqueue(args[0]);
                         connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                         if ( !connection ) { // join vc
-                            join( textChannel, msg.member );
+                            join( textChannel, msg.member, args[0] );
                         } else { // play song
+                            q.enqueue(args[0]);
                             play( connection, textChannel, msg.member );
                         }
                     } else {
-                        bot.createMessage(textChannel, `Invalid URL : ${args[0]}.`);
+                        bot.createMessage(textChannel, `\`\`\`Invalid URL : ${args[0]}.\`\`\``);
                     }
                     
                 } else {
-                    bot.createMessage(textChannel, `No URL specified.`);
+                    bot.createMessage(textChannel, `\`\`\`No URL specified.\`\`\``);
                 }
                 
                 break;
@@ -68,31 +102,55 @@ bot.on("messageCreate", async msg => {
     
 });
 
-async function join( textChannel, member) {
+async function remove( textChannel, n ) {
+    const removed = q.remove(n);
+    var info = await ytdl.getBasicInfo(removed);
+
+    bot.createMessage(textChannel, `\`\`\`ini\nRemoved [ ${info.videoDetails.title} ] from the queue.\`\`\``);
+}
+
+async function showQueue( textChannel ) {
+    var message = `\`\`\`ini\nQueue:`;
+
+    for ( i = 0; i < q.size(); i++ ) {
+        var info = await ytdl.getBasicInfo(q.get(i));
+        message += `\n${i+1}: [${info.videoDetails.title}]`;
+        
+    }
+    message += `\`\`\``;
+    bot.createMessage(textChannel, message);
+}
+
+async function join( textChannel, member, url) {
     var voiceChannel = member.voiceState.channelID;
 
     if ( voiceChannel != null ) {
+        q.enqueue(url);
         connection = await bot.joinVoiceChannel(voiceChannel);
         play( connection, textChannel );
+
+        connection.on('end', () => {
+            if ( !q.isEmpty() ){
+                play( connection, textChannel );
+            } else {
+                bot.leaveVoiceChannel(connection.channelID);
+            }
+        })
+
     } else {
         bot.createMessage(textChannel, 'You must be in a voice channel to play a song.');
     }
 
-    connection.on('end', () => {
-        if ( !q.isEmpty() ){
-            play( connection, textChannel );
-        } else {
-            bot.leaveVoiceChannel(connection.channelID);
-        }
-    })
+    
 }
+
 
 async function play( connection, textChannel ) {
     if( !connection.playing ) {
-        const info = await ytdl.getInfo(q.peek());
+        const info = await ytdl.getBasicInfo(q.peek());
         
-        bot.createMessage(textChannel, `\`\`\`Now playing: ${info.videoDetails.title}\`\`\``);
-        const stream = ytdl.downloadFromInfo(info, {filter: "audioonly"}).on('response', () => {
+        bot.createMessage(textChannel, `\`\`\`ini\nNow playing: [ ${info.videoDetails.title} ]\`\`\``);
+        const stream = ytdl(q.peek(), {filter: "audioonly"}).on('response', () => {
             if ( !connection )
                 return;
             
@@ -108,8 +166,8 @@ async function play( connection, textChannel ) {
             }
         });
     } else {
-        const info = await ytdl.getInfo(q.end());
-        bot.createMessage(textChannel, `\`\`\`Queued ${info.videoDetails.title}\`\`\``);
+        const info = await ytdl.getBasicInfo(q.end());
+        bot.createMessage(textChannel, `\`\`\`ini\nQueued [ ${info.videoDetails.title} ]\`\`\``);
     }
 
     
@@ -139,8 +197,20 @@ Queue.prototype.end = function () {
     return !this.isEmpty() ? this.elements[this.elements.length - 1] : undefined;
 }
 
+Queue.prototype.remove = function (n) {
+    return this.elements.splice(n-1, 1);
+}
+
 Queue.prototype.clear = function () {
     this.elements = [];
+}
+
+Queue.prototype.get = function (i) {
+    return this.elements[i];
+}
+
+Queue.prototype.size = function () {
+    return this.elements.length;
 }
 
 

@@ -32,27 +32,45 @@ bot.on("messageCreate", async msg => {
             
             case 'clear':
                 q.clear();
-                bot.createMessage(textChannel, `\`\`\`Queue cleared!\`\`\``);
+                bot.createMessage(textChannel, {
+                    embed: {
+                        description: `Queue cleared!`
+                    }
+                });
                 break;
-            
+
+            case 'q':
             case 'queue': // show queue
                 if ( q.isEmpty() ) {
-                    bot.createMessage(textChannel, `\`\`\`Queue is empty.\`\`\``);
+                    bot.createMessage(textChannel, {
+                        embed: {
+                            description: `Queue is empty.`
+                        }
+                    });
                 } else {
                     showQueue(textChannel);
                 }
                 
                 break;
             
+            case 'r':
             case 'remove': // remove specific song from queue
                 if ( q.isEmpty() ) {
-                    bot.createMessage(textChannel, `\`\`\`Queue is empty\`\`\``);
+                    bot.createMessage(textChannel, {
+                        embed: {
+                            description: `Queue is empty.`
+                        }
+                    });
                     break;
                 }
                 var num = parseInt(args[0], 10);
                 console.log(num);
                 if ( isNaN(num) || num < 1 || q.size() < num ) {
-                    bot.createMessage(textChannel, `\`\`\`Can't remove that from the queue\`\`\``);
+                    bot.createMessage(textChannel, {
+                        embed: {
+                            description: `Can't remove that from the queue.`
+                        }
+                    });
                 } else {
                     remove(textChannel, num);
                 }
@@ -62,7 +80,11 @@ bot.on("messageCreate", async msg => {
                 connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                 var voiceChannel = msg.member.voiceState.channelID;
                 if ( !connection ) {
-                    bot.createMessage(textChannel, `\`\`\`Not playing music rn.\`\`\``);
+                    bot.createMessage(textChannel, {
+                        embed: {
+                            description: `Not playing music rn.`
+                        }
+                    });
                 } else {
                     var botVC = parseInt(connection.channelID, 10);
                     var memberVC = parseInt(voiceChannel, 10);
@@ -72,12 +94,17 @@ bot.on("messageCreate", async msg => {
                         connection.stopPlaying();
 
                     } else {
-                        bot.createMessage(textChannel, `\`\`\`Must be connected to VC to skip.\`\`\``);
+                        bot.createMessage(textChannel, {
+                            embed: {
+                                description: `Must be connected to VC to skip.`
+                            }
+                        });
                     }
                 }
                 
                 break;
             
+            case 'p':
             case 'play':
                 if ( args.length > 0 ){
                     if ( ytdl.validateURL(args[0])){
@@ -89,11 +116,19 @@ bot.on("messageCreate", async msg => {
                             play( connection, textChannel, msg.member );
                         }
                     } else {
-                        bot.createMessage(textChannel, `\`\`\`Invalid URL : ${args[0]}.\`\`\``);
+                        bot.createMessage(textChannel, {
+                            embed: {
+                                description: `Invalid URL : ${args[0]}.`
+                            }
+                        });
                     }
                     
                 } else {
-                    bot.createMessage(textChannel, `\`\`\`No URL specified.\`\`\``);
+                    bot.createMessage(textChannel, {
+                        embed: {
+                            description: `No URL specified.`
+                        }
+                    });
                 }
                 
                 break;
@@ -102,23 +137,35 @@ bot.on("messageCreate", async msg => {
     
 });
 
+async function bubble( textChannel ) {
+
+}
+
 async function remove( textChannel, n ) {
     const removed = q.remove(n);
     var info = await ytdl.getBasicInfo(removed);
 
-    bot.createMessage(textChannel, `\`\`\`ini\nRemoved [ ${info.videoDetails.title} ] from the queue.\`\`\``);
+    bot.createMessage(textChannel, {
+        embed: {
+            description: `Removed [${info.videoDetails.title}](${removed}) from the queue.`
+        }
+    });
 }
 
 async function showQueue( textChannel ) {
-    var message = `\`\`\`ini\nQueue:`;
+    var message = ``;
 
     for ( i = 0; i < q.size(); i++ ) {
         var info = await ytdl.getBasicInfo(q.get(i));
-        message += `\n${i+1}: [${info.videoDetails.title}]`;
+        message += `${i+1}: [${info.videoDetails.title}](${q.get(i)})\n`;
         
     }
-    message += `\`\`\``;
-    bot.createMessage(textChannel, message);
+    bot.createMessage(textChannel, {
+        embed: {
+            title: "Queue",
+            description: message
+        }
+    });
 }
 
 async function join( textChannel, member, url) {
@@ -138,18 +185,23 @@ async function join( textChannel, member, url) {
         })
 
     } else {
-        bot.createMessage(textChannel, 'You must be in a voice channel to play a song.');
+        bot.createMessage(textChannel, {
+            embed: {
+                description: `Join a voice channel to play music.`
+            }
+        });
     }
-
-    
 }
-
 
 async function play( connection, textChannel ) {
     if( !connection.playing ) {
         const info = await ytdl.getBasicInfo(q.peek());
-        
-        bot.createMessage(textChannel, `\`\`\`ini\nNow playing: [ ${info.videoDetails.title} ]\`\`\``);
+
+        bot.createMessage(textChannel, {
+            embed: {
+                description: `Now playing: [${info.videoDetails.title}](${q.peek()})`
+            }
+        });
         const stream = ytdl(q.peek(), {filter: "audioonly"}).on('response', () => {
             if ( !connection )
                 return;
@@ -167,10 +219,12 @@ async function play( connection, textChannel ) {
         });
     } else {
         const info = await ytdl.getBasicInfo(q.end());
-        bot.createMessage(textChannel, `\`\`\`ini\nQueued [ ${info.videoDetails.title} ]\`\`\``);
+        bot.createMessage(textChannel, {
+            embed: {
+                description: `Queued [${info.videoDetails.title}](${q.end()})`
+            }
+        });
     }
-
-    
 }
 
 function Queue() {
@@ -205,8 +259,8 @@ Queue.prototype.clear = function () {
     this.elements = [];
 }
 
-Queue.prototype.get = function (i) {
-    return this.elements[i];
+Queue.prototype.get = function (n) {
+    return this.elements[n];
 }
 
 Queue.prototype.size = function () {

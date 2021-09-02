@@ -3,6 +3,8 @@ const COMMAND_PREFIX = '.';
 const auth = require('./auth.json');
 const Eris = require('eris');
 const ytdl = require('ytdl-core');
+const ytsr = require('ytsr');
+const { Collection, Message } = require('eris');
 
 const bot = new Eris(auth.token);
 
@@ -12,16 +14,42 @@ bot.on("ready", () => {
 
 let q = new Queue();
 
+var respond;
+var searchResults = [];
+
 bot.on("messageCreate", async msg => {
+
+    var textChannel = msg.channel.id;
 
     if ( msg.author.bot )
         return;
 
-    if ( msg.content.substring(0,1) == COMMAND_PREFIX ) {
+    if ( respond != null && respond.author.id == msg.author.id && respond.channel.id == msg.channel.id ) {
+        var num = parseInt(msg.content, 10);
+
+        if ( isNaN(num) || num < 1 || num > 5 ) {
+            bot.createMessage(textChannel, {
+                embed: {
+                    description: `Invalid selection.`
+                }
+            });
+        } else {
+            respond = null;
+            connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+            if ( !connection ) { // join vc
+                join( textChannel, msg.member, searchResults[num-1] );
+            } else { // play song
+                q.enqueue(searchResults[num-1]);
+                play( connection, textChannel, msg.member );
+            }
+            searchResults = [];
+        }
+    }
+
+     else if ( msg.content.substring(0,1) == COMMAND_PREFIX ) {
 
         var args = msg.content.substring(1).split(' ');
         var cmd = args[0];
-        var textChannel = msg.channel.id;
         args = args.splice(1);
 
         switch ( cmd ) {
@@ -64,7 +92,6 @@ bot.on("messageCreate", async msg => {
                     break;
                 }
                 var num = parseInt(args[0], 10);
-                console.log(num);
                 if ( isNaN(num) || num < 1 || q.size() < num ) {
                     bot.createMessage(textChannel, {
                         embed: {
@@ -88,8 +115,6 @@ bot.on("messageCreate", async msg => {
                 } else {
                     var botVC = parseInt(connection.channelID, 10);
                     var memberVC = parseInt(voiceChannel, 10);
-                    console.log(botVC);
-                    console.log(memberVC);
                     if ( botVC == memberVC ) {
                         connection.stopPlaying();
 
@@ -116,11 +141,7 @@ bot.on("messageCreate", async msg => {
                             play( connection, textChannel, msg.member );
                         }
                     } else {
-                        bot.createMessage(textChannel, {
-                            embed: {
-                                description: `Invalid URL : ${args[0]}.`
-                            }
-                        });
+                        search(textChannel, msg, args.join(' '));
                     }
                     
                 } else {
@@ -135,9 +156,29 @@ bot.on("messageCreate", async msg => {
         }
     }
     
-});
+})
 
-async function bubble( textChannel ) {
+bot.on("error", (err) => {
+    console.error(err);
+})
+
+async function search( textChannel, msg, query ) {
+    const results = await ytsr(query, { limit: 20 });
+    const videos = results.items.filter(x => x.type === "video");
+    
+    var message = ``;
+    
+    for ( i = 0; i < 5; i++ ) {
+        message += `${i+1} - [${videos[i].title}](${videos[i].url})\n`;
+        searchResults.push(videos[i].url);
+    }
+    bot.createMessage(textChannel, {
+        embed: {
+            title: "Search results",
+            description: message
+        }
+    });
+    respond = msg;
 
 }
 
@@ -176,14 +217,6 @@ async function join( textChannel, member, url) {
         connection = await bot.joinVoiceChannel(voiceChannel);
         play( connection, textChannel );
 
-        connection.on('end', () => {
-            if ( !q.isEmpty() ){
-                play( connection, textChannel );
-            } else {
-                bot.leaveVoiceChannel(connection.channelID);
-            }
-        })
-
     } else {
         bot.createMessage(textChannel, {
             embed: {
@@ -197,12 +230,12 @@ async function play( connection, textChannel ) {
     if( !connection.playing ) {
         const info = await ytdl.getBasicInfo(q.peek());
 
-        bot.createMessage(textChannel, {
+        var nowPlaying = await bot.createMessage(textChannel, {
             embed: {
                 description: `Now playing: [${info.videoDetails.title}](${q.peek()})`
             }
         });
-        const stream = ytdl(q.peek(), {filter: "audioonly"}).on('response', () => {
+        const stream = ytdl(q.peek(), {filter: "audioonly", highWaterMark: 1<<21}).on('response', () => {
             if ( !connection )
                 return;
             
@@ -211,12 +244,22 @@ async function play( connection, textChannel ) {
                     connection.play(stream);
                     q.dequeue();
                 } catch (error) {
-                    console.log("Something went wrong with playback");
+                    console.error(error);
                 }
             } else {
                 console.log("Connection not ready");
             }
         });
+
+        connection.once('end', () => {
+            bot.deleteMessage( textChannel, nowPlaying.id );
+            if ( !q.isEmpty() ){
+                play( connection, textChannel );
+            } else {
+                bot.leaveVoiceChannel(connection.channelID);
+            }
+        })
+
     } else {
         const info = await ytdl.getBasicInfo(q.end());
         bot.createMessage(textChannel, {

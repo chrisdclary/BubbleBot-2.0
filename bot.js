@@ -24,29 +24,7 @@ bot.on("messageCreate", async msg => {
     if ( msg.author.bot )
         return;
 
-    if ( respond != null && respond.author.id == msg.author.id && respond.channel.id == msg.channel.id ) {
-        var num = parseInt(msg.content, 10);
-
-        if ( isNaN(num) || num < 1 || num > 5 ) {
-            bot.createMessage(textChannel, {
-                embed: {
-                    description: `Invalid selection.`
-                }
-            });
-        } else {
-            respond = null;
-            connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
-            if ( !connection ) { // join vc
-                join( textChannel, msg.member, searchResults[num-1] );
-            } else { // play song
-                q.enqueue(searchResults[num-1]);
-                play( connection, textChannel, msg.member );
-            }
-            searchResults = [];
-        }
-    }
-
-     else if ( msg.content.substring(0,1) == COMMAND_PREFIX ) {
+    if ( msg.content.substring(0,1) == COMMAND_PREFIX ) {
 
         var args = msg.content.substring(1).split(' ');
         var cmd = args[0];
@@ -159,6 +137,28 @@ bot.on("messageCreate", async msg => {
                         description: `Not a valid command.`
                     }
                 });
+        }
+    } 
+
+    else if ( respond != null && respond.author.id == msg.author.id && respond.channel.id == msg.channel.id ) {
+        var num = parseInt(msg.content, 10);
+
+        if ( isNaN(num) || num < 1 || num > 5 ) {
+            bot.createMessage(textChannel, {
+                embed: {
+                    description: `Invalid selection.`
+                }
+            });
+        } else {
+            respond = null;
+            connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+            if ( !connection ) { // join vc
+                join( textChannel, msg.member, searchResults[num-1] );
+            } else { // play song
+                q.enqueue(searchResults[num-1]);
+                play( connection, textChannel, msg.member );
+            }
+            searchResults = [];
         }
     }
     

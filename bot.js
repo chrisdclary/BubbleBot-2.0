@@ -169,6 +169,7 @@ bot.on("error", (err) => {
 })
 
 async function search( textChannel, msg, query ) {
+    searchResults = [];
     const results = await ytsr(query, { limit: 20 });
     const videos = results.items.filter(x => x.type === "video");
 

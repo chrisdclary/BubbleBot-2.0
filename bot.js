@@ -153,6 +153,12 @@ bot.on("messageCreate", async msg => {
                 }
                 
                 break;
+            default:
+                bot.createMessage(textChannel, {
+                    embed: {
+                        description: `Not a valid command.`
+                    }
+                });
         }
     }
     
@@ -165,6 +171,8 @@ bot.on("error", (err) => {
 async function search( textChannel, msg, query ) {
     const results = await ytsr(query, { limit: 20 });
     const videos = results.items.filter(x => x.type === "video");
+
+    console.log(videos);
     
     var message = ``;
     
@@ -211,7 +219,6 @@ async function showQueue( textChannel ) {
 
 async function join( textChannel, member, url) {
     var voiceChannel = member.voiceState.channelID;
-
     if ( voiceChannel != null ) {
         q.enqueue(url);
         connection = await bot.joinVoiceChannel(voiceChannel);
@@ -228,45 +235,71 @@ async function join( textChannel, member, url) {
 
 async function play( connection, textChannel ) {
     if( !connection.playing ) {
-        const info = await ytdl.getBasicInfo(q.peek());
+        console.log("Getting info...")
+        try {
 
-        var nowPlaying = await bot.createMessage(textChannel, {
-            embed: {
-                description: `Now playing: [${info.videoDetails.title}](${q.peek()})`
-            }
-        });
-        const stream = ytdl(q.peek(), {filter: "audioonly", highWaterMark: 1<<21}).on('response', () => {
-            if ( !connection )
-                return;
-            
-            if ( connection.ready ) {
-                try {
-                    connection.play(stream);
-                    q.dequeue();
-                } catch (error) {
-                    console.error(error);
+            const info = await ytdl.getBasicInfo(q.peek());
+            var nowPlaying = await bot.createMessage(textChannel, {
+                embed: {
+                    description: `Now playing: [${info.videoDetails.title}](${q.peek()})`
                 }
-            } else {
-                console.log("Connection not ready");
-            }
-        });
+            });
+            const stream = ytdl(q.peek(), {filter: "audioonly", highWaterMark: 1<<21}).on('response', () => {
+                if ( !connection )
+                    return;
+                
+                if ( connection.ready ) {
+                    try {
+                        connection.play(stream);
+                        q.dequeue();
+                    } catch (error) {
+                        console.error(error);
+                        play(connection, textChannel);
+                    }
+                } else {
+                    console.log("Connection not ready");
+                }
+            });
+    
+            connection.once('end', () => {
+                bot.deleteMessage( textChannel, nowPlaying.id );
+                if ( !q.isEmpty() ){
+                    play( connection, textChannel );
+                } else {
+                    bot.leaveVoiceChannel(connection.channelID);
+                }
+            })
 
-        connection.once('end', () => {
-            bot.deleteMessage( textChannel, nowPlaying.id );
-            if ( !q.isEmpty() ){
-                play( connection, textChannel );
-            } else {
-                bot.leaveVoiceChannel(connection.channelID);
-            }
-        })
+        } catch(err) {
+            console.error(err);
+            bot.createMessage(textChannel, {
+                embed: {
+                    description: `Problem fetching info, video might be age-restricted.`
+                }
+            });
+            q.dequeue();
+        }
+        
+
+        
 
     } else {
-        const info = await ytdl.getBasicInfo(q.end());
-        bot.createMessage(textChannel, {
-            embed: {
-                description: `Queued [${info.videoDetails.title}](${q.end()})`
-            }
-        });
+        try {
+            const info = await ytdl.getBasicInfo(q.end());
+            bot.createMessage(textChannel, {
+                embed: {
+                    description: `Queued [${info.videoDetails.title}](${q.end()})`
+                }
+            });
+        } catch(err) {
+            console.error(err);
+            bot.createMessage(textChannel, {
+                embed: {
+                    description: `Problem fetching info, video might be age-restricted.`
+                }
+            });
+            q.pop();
+        }
     }
 }
 
@@ -280,6 +313,10 @@ Queue.prototype.enqueue = function (e) {
 
 Queue.prototype.dequeue = function () {
     return this.elements.shift();
+}
+
+Queue.prototype.pop = function () {
+    return this.elements.pop();
 }
 
 Queue.prototype.isEmpty = function () {

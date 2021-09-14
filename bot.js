@@ -37,7 +37,7 @@ bot.on("messageCreate", async msg => {
                 await bot.createMessage(textChannel, `Hello World!`);
                 break;
             
-            case 'clear':
+            case 'clear': // clear the queue
                 q.clear();
                 bot.createMessage(textChannel, {
                     embed: {
@@ -62,6 +62,19 @@ bot.on("messageCreate", async msg => {
                         }
                     });
                 }
+                break;
+            
+            case 'help':
+                bot.createMessage(textChannel, {
+                    embed: {
+                        title: `Commands`,
+                        description: `.p/play [url / search query]  -  Play audio from given youtube URL or search keywords\n
+                        .q/queue  -  Shows songs in the queue\n
+                        .skip  -  Skips the current song\n
+                        .r/remove [number]  -  Removes a song from the queue\n
+                        .clear  -  Clears all songs from the queue`
+                    }
+                });
                 break;
 
             case 'q':
@@ -100,7 +113,7 @@ bot.on("messageCreate", async msg => {
                 }
                 break;
             
-            case 'skip':
+            case 'skip': // skip current song
                 connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                 var voiceChannel = msg.member.voiceState.channelID;
                 if ( !connection ) {
@@ -155,7 +168,7 @@ bot.on("messageCreate", async msg => {
             default:
                 bot.createMessage(textChannel, {
                     embed: {
-                        description: `Not a valid command.`
+                        description: `Not a valid command. Type '.help' for a list of commands`
                     }
                 });
         }
@@ -348,6 +361,8 @@ async function play( connection, textChannel ) {
             });
             // Remove it from the queue so it doesn't cause problems
             q.dequeue();
+            if ( q.isEmpty )
+                bot.leaveVoiceChannel(connection.channelID);
         }
         
 

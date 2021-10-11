@@ -10,8 +10,7 @@ const bot = new Eris(auth.token);
 
 bot.on("ready", () => {
     var time = new Date();
-    console.error(`Ready! - ${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
-
+    console.log(`Ready! - ${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
 });
 
 let q = new Queue();

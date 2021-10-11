@@ -9,7 +9,9 @@ const { Collection, Message } = require('eris');
 const bot = new Eris(auth.token);
 
 bot.on("ready", () => {
-	console.log("Ready!");
+    var time = new Date();
+    console.error(`Ready! - ${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
+
 });
 
 let q = new Queue();

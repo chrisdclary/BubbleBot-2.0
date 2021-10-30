@@ -10,12 +10,13 @@ const bot = new Eris(auth.token);
 
 bot.on("ready", () => {
     var time = new Date();
-    console.log(`Ready! - ${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
+    debugLog("Ready!")
 });
 
 let q = new Queue();
 
-var debug = false;
+// Default debug mode: true (for now)
+var debug = true;
 var respond;
 var searchResults = [];
 
@@ -150,6 +151,7 @@ bot.on("messageCreate", async msg => {
                             join( textChannel, msg.member, args[0] );
                         } else { // play song
                             q.enqueue(args[0]);
+                            debugLog("Added a song to the queue");
                             play( connection, textChannel, msg.member );
                         }
                     } else {
@@ -160,7 +162,7 @@ bot.on("messageCreate", async msg => {
                 } else {
                     bot.createMessage(textChannel, {
                         embed: {
-                            description: `No URL specified.`
+                            description: `Proper usage: .play < search terms / youtube URL >`
                         }
                     });
                 }
@@ -199,6 +201,7 @@ bot.on("messageCreate", async msg => {
                 join( textChannel, msg.member, searchResults[num-1] );
             } else { // play song
                 q.enqueue(searchResults[num-1]);
+                debugLog("Added song to queue");
                 play( connection, textChannel, msg.member );
             }
             searchResults = [];
@@ -274,7 +277,9 @@ async function join( textChannel, member, url) {
 
     if ( voiceChannel != null ) {
         q.enqueue(url);
+        debugLog("Added song to the queue");
         connection = await bot.joinVoiceChannel(voiceChannel);
+        debugLog("Joined VC");
         play( connection, textChannel );
 
         // Create event listener for connection errors
@@ -296,10 +301,10 @@ async function play( connection, textChannel ) {
     // Play the next song in the queue if nothing is currently playing,
     // Otherwise respond that the song has been added to the queue
     if( !connection.playing ) {
-        if ( debug ) 
-            console.log("Getting info...");
+        debugLog("Connection free, starting to play...");
         try {
             // Get title for next song in the queue
+            debugLog("Getting video info...");
             const info = await ytdl.getBasicInfo(q.peek());
 
             // Display the current song
@@ -310,15 +315,17 @@ async function play( connection, textChannel ) {
             });
             // Download the next song in the queue and play it
             const stream = ytdl(q.peek(), { filter: "audioonly", highWaterMark: 1<<21, dlChunkSize: 1<<30 }).on('response', () => {
-                if ( !connection )
+                if ( !connection ){
+                    debugLog("Connection not found");
                     return;
+                }
                 
                 if ( connection.ready ) {
                     try {
-                        if ( debug )
-                            console.log("Playing song...");
+                        debugLog("Playing song...");
                         connection.play(stream);
                         // If song starts playing without error, remove it from the queue
+                        debugLog("Removed song from queue")
                         q.dequeue();
                         
                     } catch (error) {
@@ -329,26 +336,22 @@ async function play( connection, textChannel ) {
                 }
             });
 
-            if ( debug ) {
-                stream.on('progress', (x, y, z) => {
-                    console.log(`${x} - ${y} - ${z}`);
-                })
-            }
+            //     stream.on('progress', (x, y, z) => {
+            //         debugLog(`${x} - ${y} - ${z}`);
+            //     })
             
     
             // When a song ends, play the next song in the queue if there is one,
             // Otherwise, leave the voice channel
             connection.once('end', () => {
-                if ( debug ) {
-                    var time = new Date();
-                    console.log(`Finished playing at ${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);    
-                }
-
+                debugLog("Reached end of song");    
                 bot.deleteMessage( textChannel, nowPlaying.id );
                 if ( !q.isEmpty() ){
+                    debugLog("Playing next song in queue");
                     play( connection, textChannel );
                 } else {
                     bot.leaveVoiceChannel(connection.channelID);
+                    debugLog("Disconnected from VC");
                 }
             })
         
@@ -396,6 +399,17 @@ function throwError(type, error) {
     var time = new Date();
     console.error(`${type} Error at ${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
     console.error(error);
+}
+
+function debugLog(info) {
+    if (debug) {
+        let buffer = "";
+        for(i = 50; i > info.length; i--) {
+            buffer = buffer + " ";
+        }
+        var time = new Date();
+        console.log(`${info}${buffer}${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
+    }
 }
 
 function Queue() {

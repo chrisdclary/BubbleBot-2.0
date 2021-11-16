@@ -17,8 +17,10 @@ let q = new Queue();
 
 // Default debug mode: true (for now)
 var debug = true;
-var respond;
-var searchResults = [];
+
+const searchMap = new Map();
+// var respond;
+// var searchResults = [];
 
 bot.on("messageCreate", async msg => {
 
@@ -148,15 +150,15 @@ bot.on("messageCreate", async msg => {
                         // If they entered a valid youtube url, play that directly from ytdl
                         connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                         if ( !connection ) { // join vc
-                            join( textChannel, msg.member, args[0] );
+                            join( textChannel, msg.member, args[0], false );
                         } else { // play song
                             q.enqueue(args[0]);
                             debugLog("Added a song to the queue");
-                            play( connection, textChannel, msg.member );
+                            play( connection, textChannel, args[0] );
                         }
                     } else {
                         // If they entered something else, search youtube
-                        search(textChannel, msg, args.join(' '));
+                        search(textChannel, msg, args.join(' '), false);
                     }
                     
                 } else {
@@ -177,15 +179,15 @@ bot.on("messageCreate", async msg => {
                         // If they entered a valid youtube url, play that directly from ytdl
                         connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                         if ( !connection ) { // join vc
-                            join( textChannel, msg.member, args[0] );
+                            join( textChannel, msg.member, args[0], true );
                         } else { // play song
                             q.push(args[0]);
                             debugLog("Added a song to the queue");
-                            play( connection, textChannel, msg.member );
+                            play( connection, textChannel, args[0] );
                         }
                     } else {
                         // If they entered something else, search youtube
-                        search(textChannel, msg, args.join(' '));
+                        search(textChannel, msg, args.join(' '), true);
                     }
                     
                 } else {
@@ -209,10 +211,14 @@ bot.on("messageCreate", async msg => {
     } 
 
     // If the user is responding to a search request
-    else if ( respond != null && respond.author.id == msg.author.id && respond.channel.id == msg.channel.id ) {
+    else if ( searchMap.has( msg.author.id ) ) {
 
         // User input
         var num = parseInt(msg.content, 10);
+
+        tuple = searchMap.get( msg.author.id );
+        searchResults = tuple[1];
+        playnext = tuple[0];
 
         // Number of search results
         var max = searchResults.length;
@@ -226,16 +232,19 @@ bot.on("messageCreate", async msg => {
             });
         } else {
             // Play the selected video as if they used the .play command
-            respond = null;
             connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
             if ( !connection ) { // join vc
-                join( textChannel, msg.member, searchResults[num-1] );
+                join( textChannel, msg.member, searchResults[num-1], playnext );
             } else { // play song
-                q.enqueue(searchResults[num-1]);
+                if ( playnext) {
+                    q.push(searchResults[num-1]);
+                } else {
+                    q.enqueue(searchResults[num-1]);
+                }
                 debugLog("Added song to queue");
-                play( connection, textChannel, msg.member );
+                play( connection, textChannel, searchResults[num-1] );
             }
-            searchResults = [];
+            searchMap.delete( msg.author.id );
         }
     }
     
@@ -246,7 +255,7 @@ bot.on("error", (err) => {
 })
 
 // Search youtube for results and display the top 5
-async function search( textChannel, msg, query ) {
+async function search( textChannel, msg, query, playnext ) {
     searchResults = [];
     const results = await ytsr(query, { limit: 20 });
     // Filter those results to only videos (no livestreams or playlists)
@@ -268,7 +277,10 @@ async function search( textChannel, msg, query ) {
             description: message
         }
     });
-    respond = msg;
+
+    tuple = [playnext, searchResults]
+    searchMap.set( msg.author.id, tuple );
+    //respond = msg;
 
 }
 
@@ -302,18 +314,25 @@ async function showQueue( textChannel ) {
 }
 
 // Join the voice chat and queue the song, then play the queued song
-async function join( textChannel, member, url) {
+async function join( textChannel, member, url, playnext) {
 
     var voiceChannel = member.voiceState.channelID;
 
     if ( voiceChannel != null ) {
-        q.enqueue(url);
+
+        // Push to front or back of queue depending if this was invoked by playnext
+        if( playnext ) {
+            q.push(url);
+        } else {
+            q.enqueue(url);
+        }
+        
         debugLog("Added song to the queue");
         connection = await bot.joinVoiceChannel(voiceChannel);
         // ******** potential bug found here, connection might fail     *********
         // ******** and execution stops, not sure why yet               *********
         debugLog("Joined VC");
-        play( connection, textChannel );
+        play( connection, textChannel, url );
 
         // Create event listener for connection errors
         connection.on("error", async (err) => {
@@ -329,7 +348,7 @@ async function join( textChannel, member, url) {
     }
 }
 
-async function play( connection, textChannel ) {
+async function play( connection, textChannel, song ) {
 
     // Play the next song in the queue if nothing is currently playing,
     // Otherwise respond that the song has been added to the queue
@@ -393,7 +412,7 @@ async function play( connection, textChannel ) {
                 bot.deleteMessage( textChannel, nowPlaying.id );
                 if ( !q.isEmpty() ){
                     debugLog("Playing next song in queue");
-                    play( connection, textChannel );
+                    play( connection, textChannel, q.peek() );
                 } else {
                     bot.leaveVoiceChannel(connection.channelID);
                     debugLog("Disconnected from VC");
@@ -419,7 +438,7 @@ async function play( connection, textChannel ) {
     // Bot is playing something, so display the song that was queued
     } else {
         try {
-            const info = await ytdl.getBasicInfo(q.end());
+            const info = await ytdl.getBasicInfo(song);
             bot.createMessage(textChannel, {
                 embed: {
                     description: `Queued:  [${info.videoDetails.title}](${q.end()})`

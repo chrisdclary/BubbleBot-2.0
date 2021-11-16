@@ -168,6 +168,35 @@ bot.on("messageCreate", async msg => {
                 }
                 
                 break;
+
+            // playnext is the same as play, but adds a song to the beginning of the queue rather than the end
+            case 'pn':
+            case 'playnext':
+                if ( args.length > 0 ){
+                    if ( ytdl.validateURL(args[0])){
+                        // If they entered a valid youtube url, play that directly from ytdl
+                        connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+                        if ( !connection ) { // join vc
+                            join( textChannel, msg.member, args[0] );
+                        } else { // play song
+                            q.push(args[0]);
+                            debugLog("Added a song to the queue");
+                            play( connection, textChannel, msg.member );
+                        }
+                    } else {
+                        // If they entered something else, search youtube
+                        search(textChannel, msg, args.join(' '));
+                    }
+                    
+                } else {
+                    bot.createMessage(textChannel, {
+                        embed: {
+                            description: `Proper usage: .play < search terms / youtube URL >`
+                        }
+                    });
+                }
+                
+                break;
             default:
 
                 // Do Nothing
@@ -328,8 +357,15 @@ async function play( connection, textChannel ) {
                     debugLog("Connection not found");
                     return;
                 }
+
+                // Retry connection a few times if it's not ready
+                var retries = 15;
+                while( !connection.ready && retries-- > 0) {
+                    debugLog("Connection not ready. Retrying...");
+                }
                 
                 if ( connection.ready ) {
+                    debugLog("Connection ready after " + (15 - retries) + " retries.");
                     try {
                         debugLog("Playing song...");
                         connection.play(stream);
@@ -341,8 +377,7 @@ async function play( connection, textChannel ) {
                         throwError("Player", error);
                     }
                 } else {
-                    console.log("Connection not ready");
-                    // gotta make it retry <---------------------------------------------------------------------------------------------------
+                    debugLog("Connection not ready");
                 }
             });
 
@@ -390,7 +425,7 @@ async function play( connection, textChannel ) {
                     description: `Queued:  [${info.videoDetails.title}](${q.end()})`
                 }
             });
-        // Again, error with song info is probably an agre restricted video
+        // Again, error with song info is probably an age restricted video
         } catch(err) {
             throwError("Youtube Fetch", err);
             bot.createMessage(textChannel, {
@@ -414,7 +449,7 @@ function throwError(type, error) {
 function debugLog(info) {
     if (debug) {
         let buffer = "";
-        for(i = 50; i > info.length; i--) {
+        for(i = 60; i > info.length; i--) {
             buffer = buffer + " ";
         }
         var time = new Date();
@@ -434,9 +469,14 @@ Queue.prototype.dequeue = function () {
     return this.elements.shift();
 }
 
+Queue.prototype.push = function (e) {
+    this.elements.unshift(e);
+}
+
 Queue.prototype.pop = function () {
     return this.elements.pop();
 }
+
 
 Queue.prototype.isEmpty = function () {
     return this.elements.length == 0;

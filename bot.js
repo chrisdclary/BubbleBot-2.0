@@ -169,11 +169,13 @@ bot.on("messageCreate", async msg => {
                 
                 break;
             default:
-                bot.createMessage(textChannel, {
-                    embed: {
-                        description: `Not a valid command. Type '.help' for a list of commands`
-                    }
-                });
+
+                // Do Nothing
+                // bot.createMessage(textChannel, {
+                //     embed: {
+                //         description: `Not a valid command. Type '.help' for a list of commands`
+                //     }
+                // });
         }
     } 
 
@@ -279,6 +281,8 @@ async function join( textChannel, member, url) {
         q.enqueue(url);
         debugLog("Added song to the queue");
         connection = await bot.joinVoiceChannel(voiceChannel);
+        // ******** potential bug found here, connection might fail     *********
+        // ******** and execution stops, not sure why yet               *********
         debugLog("Joined VC");
         play( connection, textChannel );
 
@@ -313,6 +317,11 @@ async function play( connection, textChannel ) {
                     description: `Now playing:  [${info.videoDetails.title}](${q.peek()})`
                 }
             });
+
+            //
+            // Bot stopped somewhere here, no errors thrown
+            // 
+
             // Download the next song in the queue and play it
             const stream = ytdl(q.peek(), { filter: "audioonly", highWaterMark: 1<<21, dlChunkSize: 1<<30 }).on('response', () => {
                 if ( !connection ){
@@ -333,6 +342,7 @@ async function play( connection, textChannel ) {
                     }
                 } else {
                     console.log("Connection not ready");
+                    // gotta make it retry <---------------------------------------------------------------------------------------------------
                 }
             });
 

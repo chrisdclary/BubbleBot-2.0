@@ -13,14 +13,14 @@ bot.on("ready", () => {
     debugLog("Ready!")
 });
 
-let q = new Queue();
-
 // Default debug mode: true (for now)
 var debug = true;
 
+// Map for holding search requests
 const searchMap = new Map();
-// var respond;
-// var searchResults = [];
+
+// Holds queues for different guilds
+const guildQueues = new Map();
 
 bot.on("messageCreate", async msg => {
 
@@ -35,6 +35,7 @@ bot.on("messageCreate", async msg => {
         var cmd = args[0];
         args = args.splice(1);
 
+
         switch ( cmd ) {
 
             case 'hello':
@@ -42,6 +43,7 @@ bot.on("messageCreate", async msg => {
                 break;
             
             case 'clear': // clear the queue
+                q = getQueue( msg.guildID );
                 q.clear();
                 bot.createMessage(textChannel, {
                     embed: {
@@ -83,6 +85,7 @@ bot.on("messageCreate", async msg => {
 
             case 'q':
             case 'queue': // show queue
+                q = getQueue( msg.guildID );
                 if ( q.isEmpty() ) {
                     bot.createMessage(textChannel, {
                         embed: {
@@ -90,13 +93,14 @@ bot.on("messageCreate", async msg => {
                         }
                     });
                 } else {
-                    showQueue(textChannel);
+                    showQueue(textChannel, msg.guildID);
                 }
                 
                 break;
             
             case 'r':
             case 'remove': // remove specific song from queue
+                q = getQueue( msg.guildID );
                 if ( q.isEmpty() ) {
                     bot.createMessage(textChannel, {
                         embed: {
@@ -113,7 +117,7 @@ bot.on("messageCreate", async msg => {
                         }
                     });
                 } else {
-                    remove(textChannel, num);
+                    remove(textChannel, num, msg.guildID);
                 }
                 break;
             
@@ -150,11 +154,12 @@ bot.on("messageCreate", async msg => {
                         // If they entered a valid youtube url, play that directly from ytdl
                         connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                         if ( !connection ) { // join vc
-                            join( textChannel, msg.member, args[0], false );
+                            join( textChannel, msg.member, args[0], false, msg.guildID );
                         } else { // play song
+                            q = getQueue( msg.guildID );
                             q.enqueue(args[0]);
                             debugLog("Added a song to the queue");
-                            play( connection, textChannel, args[0] );
+                            play( connection, textChannel, args[0], msg.guildID );
                         }
                     } else {
                         // If they entered something else, search youtube
@@ -179,11 +184,12 @@ bot.on("messageCreate", async msg => {
                         // If they entered a valid youtube url, play that directly from ytdl
                         connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                         if ( !connection ) { // join vc
-                            join( textChannel, msg.member, args[0], true );
+                            join( textChannel, msg.member, args[0], true, msg.guildID );
                         } else { // play song
+                            q = getQueue( msg.guildID );
                             q.push(args[0]);
                             debugLog("Added a song to the queue");
-                            play( connection, textChannel, args[0] );
+                            play( connection, textChannel, args[0], msg.guildID );
                         }
                     } else {
                         // If they entered something else, search youtube
@@ -234,15 +240,17 @@ bot.on("messageCreate", async msg => {
             // Play the selected video as if they used the .play command
             connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
             if ( !connection ) { // join vc
-                join( textChannel, msg.member, searchResults[num-1], playnext );
+                join( textChannel, msg.member, searchResults[num-1], playnext, msg.guildID );
             } else { // play song
                 if ( playnext) {
+                    q = getQueue( msg.guildID );
                     q.push(searchResults[num-1]);
                 } else {
+                    q = getQueue( msg.guildID );
                     q.enqueue(searchResults[num-1]);
                 }
                 debugLog("Added song to queue");
-                play( connection, textChannel, searchResults[num-1] );
+                play( connection, textChannel, searchResults[num-1], msg.guildID );
             }
             searchMap.delete( msg.author.id );
         }
@@ -285,7 +293,8 @@ async function search( textChannel, msg, query, playnext ) {
 }
 
 // Remove the requested song from the queue
-async function remove( textChannel, n ) {
+async function remove( textChannel, n, guildID ) {
+    q = getQueue( guildID );
     const removed = q.remove(n);
     var info = await ytdl.getBasicInfo(removed);
 
@@ -297,7 +306,8 @@ async function remove( textChannel, n ) {
 }
 
 // Display the queued songs in order
-async function showQueue( textChannel ) {
+async function showQueue( textChannel, guildID ) {
+    q = getQueue( guildID );
     var message = ``;
 
     for ( i = 0; i < q.size(); i++ ) {
@@ -314,12 +324,12 @@ async function showQueue( textChannel ) {
 }
 
 // Join the voice chat and queue the song, then play the queued song
-async function join( textChannel, member, url, playnext) {
+async function join( textChannel, member, url, playnext, guildID) {
 
     var voiceChannel = member.voiceState.channelID;
 
     if ( voiceChannel != null ) {
-
+        q = getQueue( guildID );
         // Push to front or back of queue depending if this was invoked by playnext
         if( playnext ) {
             q.push(url);
@@ -332,7 +342,7 @@ async function join( textChannel, member, url, playnext) {
         // ******** potential bug found here, connection might fail     *********
         // ******** and execution stops, not sure why yet               *********
         debugLog("Joined VC");
-        play( connection, textChannel, url );
+        play( connection, textChannel, url, guildID );
 
         // Create event listener for connection errors
         connection.on("error", async (err) => {
@@ -348,7 +358,9 @@ async function join( textChannel, member, url, playnext) {
     }
 }
 
-async function play( connection, textChannel, song ) {
+async function play( connection, textChannel, song, guildID ) {
+
+    q = getQueue( guildID );
 
     // Play the next song in the queue if nothing is currently playing,
     // Otherwise respond that the song has been added to the queue
@@ -412,7 +424,7 @@ async function play( connection, textChannel, song ) {
                 bot.deleteMessage( textChannel, nowPlaying.id );
                 if ( !q.isEmpty() ){
                     debugLog("Playing next song in queue");
-                    play( connection, textChannel, q.peek() );
+                    play( connection, textChannel, q.peek(), guildID );
                 } else {
                     bot.leaveVoiceChannel(connection.channelID);
                     debugLog("Disconnected from VC");
@@ -474,6 +486,14 @@ function debugLog(info) {
         var time = new Date();
         console.log(`${info}${buffer}${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
     }
+}
+
+function getQueue( guild ) {
+    if ( !guildQueues.has(guild) ) {
+        q = new Queue;
+        guildQueues.set( guild, q );
+    }
+    return guildQueues.get(guild);
 }
 
 function Queue() {

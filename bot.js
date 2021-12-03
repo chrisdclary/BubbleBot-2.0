@@ -9,12 +9,11 @@ const { Collection, Message } = require('eris');
 const bot = new Eris(auth.token);
 
 bot.on("ready", () => {
-    var time = new Date();
     debugLog("Ready!")
 });
 
 // Default debug mode: true (for now)
-var debug = true;
+debug = true;
 
 // Map for holding search requests
 const searchMap = new Map();
@@ -24,11 +23,12 @@ const guildQueues = new Map();
 
 bot.on("messageCreate", async msg => {
 
-    var textChannel = msg.channel.id;
+    var textChannelID = msg.channel.id;
 
     if ( msg.author.bot )
         return;
 
+    // Only react to messages beginning with '.'
     if ( msg.content.substring(0,1) == COMMAND_PREFIX ) {
 
         var args = msg.content.substring(1).split(' ');
@@ -39,13 +39,13 @@ bot.on("messageCreate", async msg => {
         switch ( cmd ) {
 
             case 'hello':
-                await bot.createMessage(textChannel, `Hello World!`);
+                await bot.createMessage(textChannelID, `Hello World!`);
                 break;
             
             case 'clear': // clear the queue
-                q = getQueue( msg.guildID );
+                var q = getQueue( msg.guildID );
                 q.clear();
-                bot.createMessage(textChannel, {
+                bot.createMessage(textChannelID, {
                     embed: {
                         description: `Queue cleared!`
                     }
@@ -56,13 +56,13 @@ bot.on("messageCreate", async msg => {
             case 'debug':
                 debug = !debug;
                 if ( debug ){
-                    bot.createMessage(textChannel, {
+                    bot.createMessage(textChannelID, {
                         embed: {
                             description: `Turning debug mode on.`
                         }
                     });
                 } else {
-                    bot.createMessage(textChannel, {
+                    bot.createMessage(textChannelID, {
                         embed: {
                             description: `Turning debug mode off.`
                         }
@@ -71,7 +71,7 @@ bot.on("messageCreate", async msg => {
                 break;
             
             case 'help':
-                bot.createMessage(textChannel, {
+                bot.createMessage(textChannelID, {
                     embed: {
                         title: `Commands`,
                         description: `.p/play [url / search query]  -  Play audio from given youtube URL or search keywords\n
@@ -85,24 +85,24 @@ bot.on("messageCreate", async msg => {
 
             case 'q':
             case 'queue': // show queue
-                q = getQueue( msg.guildID );
+                var q = getQueue( msg.guildID );
                 if ( q.isEmpty() ) {
-                    bot.createMessage(textChannel, {
+                    bot.createMessage(textChannelID, {
                         embed: {
                             description: `Queue is empty.`
                         }
                     });
                 } else {
-                    showQueue(textChannel, msg.guildID);
+                    showQueue(textChannelID, msg.guildID);
                 }
                 
                 break;
             
             case 'r':
             case 'remove': // remove specific song from queue
-                q = getQueue( msg.guildID );
+                var q = getQueue( msg.guildID );
                 if ( q.isEmpty() ) {
-                    bot.createMessage(textChannel, {
+                    bot.createMessage(textChannelID, {
                         embed: {
                             description: `Queue is empty.`
                         }
@@ -111,21 +111,26 @@ bot.on("messageCreate", async msg => {
                 }
                 var num = parseInt(args[0], 10);
                 if ( isNaN(num) || num < 1 || q.size() < num ) {
-                    bot.createMessage(textChannel, {
+                    bot.createMessage(textChannelID, {
                         embed: {
                             description: `Can't remove that from the queue.`
                         }
                     });
                 } else {
-                    remove(textChannel, num, msg.guildID);
+                    remove(textChannelID, num, msg.guildID);
                 }
                 break;
             
             case 'skip': // skip current song
-                connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+                // Find an open voice connection with the same guild ID as the voice channel this command was invoked
+                const connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+
+                // user's voice connection
                 var voiceChannel = msg.member.voiceState.channelID;
+
+                
                 if ( !connection ) {
-                    bot.createMessage(textChannel, {
+                    bot.createMessage(textChannelID, {
                         embed: {
                             description: `Not playing music rn.`
                         }
@@ -137,7 +142,7 @@ bot.on("messageCreate", async msg => {
                         connection.stopPlaying();
 
                     } else {
-                        bot.createMessage(textChannel, {
+                        bot.createMessage(textChannelID, {
                             embed: {
                                 description: `Must be connected to VC to skip.`
                             }
@@ -152,22 +157,22 @@ bot.on("messageCreate", async msg => {
                 if ( args.length > 0 ){
                     if ( ytdl.validateURL(args[0])){
                         // If they entered a valid youtube url, play that directly from ytdl
-                        connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+                        const connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                         if ( !connection ) { // join vc
-                            join( textChannel, msg.member, args[0], false, msg.guildID );
+                            join( textChannelID, msg.member, args[0], false, msg.guildID );
                         } else { // play song
-                            q = getQueue( msg.guildID );
+                            var q = getQueue( msg.guildID );
                             q.enqueue(args[0]);
                             debugLog("Added a song to the queue");
-                            play( connection, textChannel, args[0], msg.guildID );
+                            play( connection, textChannelID, args[0], msg.guildID );
                         }
                     } else {
                         // If they entered something else, search youtube
-                        search(textChannel, msg, args.join(' '), false);
+                        search(textChannelID, msg, args.join(' '), false);
                     }
                     
                 } else {
-                    bot.createMessage(textChannel, {
+                    bot.createMessage(textChannelID, {
                         embed: {
                             description: `Proper usage: .play < search terms / youtube URL >`
                         }
@@ -182,22 +187,22 @@ bot.on("messageCreate", async msg => {
                 if ( args.length > 0 ){
                     if ( ytdl.validateURL(args[0])){
                         // If they entered a valid youtube url, play that directly from ytdl
-                        connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+                        const connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                         if ( !connection ) { // join vc
-                            join( textChannel, msg.member, args[0], true, msg.guildID );
+                            join( textChannelID, msg.member, args[0], true, msg.guildID );
                         } else { // play song
-                            q = getQueue( msg.guildID );
+                            var q = getQueue( msg.guildID );
                             q.push(args[0]);
                             debugLog("Added a song to the queue");
-                            play( connection, textChannel, args[0], msg.guildID );
+                            play( connection, textChannelID, args[0], msg.guildID );
                         }
                     } else {
                         // If they entered something else, search youtube
-                        search(textChannel, msg, args.join(' '), true);
+                        search(textChannelID, msg, args.join(' '), true);
                     }
                     
                 } else {
-                    bot.createMessage(textChannel, {
+                    bot.createMessage(textChannelID, {
                         embed: {
                             description: `Proper usage: .play < search terms / youtube URL >`
                         }
@@ -208,7 +213,7 @@ bot.on("messageCreate", async msg => {
             default:
 
                 // Do Nothing
-                // bot.createMessage(textChannel, {
+                // bot.createMessage(textChannelID, {
                 //     embed: {
                 //         description: `Not a valid command. Type '.help' for a list of commands`
                 //     }
@@ -216,46 +221,50 @@ bot.on("messageCreate", async msg => {
         }
     } 
 
-    // If the user is responding to a search request
+    // If the message doesn't begin with '.' , a user may be reacting to a search result
     else if ( searchMap.has( msg.author.id ) ) {
 
-        // User input
-        var num = parseInt(msg.content, 10);
+        var tuple = searchMap.get( msg.author.id );
+        var requestChannelID = tuple[2];        // Channel where request was given
+        var searchResults = tuple[1];           // Search results
+        var playnext = tuple[0];                // Boolean determines whether song goes to beginning or end of queue
 
-        tuple = searchMap.get( msg.author.id );
-        searchResults = tuple[1];
-        playnext = tuple[0];
+        // Only deal with messages in the same channel as search request
+        if ( textChannelID == requestChannelID ){
 
-        // Number of search results
-        var max = searchResults.length;
+            // User input
+            var num = parseInt(msg.content, 10);
 
-        // Make sure they are making a valid selection
-        if ( isNaN(num) || num < 1 || num > max ) {
-            bot.createMessage(textChannel, {
-                embed: {
-                    description: `Invalid selection.`
+            // Number of search results
+            var max = searchResults.length;
+
+            // Make sure they are making a valid selection
+            if ( isNaN(num) || num < 1 || num > max ) {
+                bot.createMessage(textChannelID, {
+                    embed: {
+                        description: `Invalid selection.`
+                    }
+                });
+            } else {
+                // Play the selected video as if they used the .play command
+                var connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+                if ( !connection ) { // join vc
+                    join( textChannelID, msg.member, searchResults[num-1], playnext, msg.guildID );
+                } else { // play song
+                    if ( playnext) {
+                        var q = getQueue( msg.guildID );
+                        q.push(searchResults[num-1]);
+                    } else {
+                        var q = getQueue( msg.guildID );
+                        q.enqueue(searchResults[num-1]);
+                    }
+                    debugLog("Added song to queue");
+                    play( connection, textChannelID, searchResults[num-1], msg.guildID );
                 }
-            });
-        } else {
-            // Play the selected video as if they used the .play command
-            connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
-            if ( !connection ) { // join vc
-                join( textChannel, msg.member, searchResults[num-1], playnext, msg.guildID );
-            } else { // play song
-                if ( playnext) {
-                    q = getQueue( msg.guildID );
-                    q.push(searchResults[num-1]);
-                } else {
-                    q = getQueue( msg.guildID );
-                    q.enqueue(searchResults[num-1]);
-                }
-                debugLog("Added song to queue");
-                play( connection, textChannel, searchResults[num-1], msg.guildID );
+                searchMap.delete( msg.author.id );
             }
-            searchMap.delete( msg.author.id );
         }
     }
-    
 })
 
 bot.on("error", (err) => {
@@ -263,8 +272,8 @@ bot.on("error", (err) => {
 })
 
 // Search youtube for results and display the top 5
-async function search( textChannel, msg, query, playnext ) {
-    searchResults = [];
+async function search( textChannelID, msg, query, playnext ) {
+    var searchResults = [];
     const results = await ytsr(query, { limit: 20 });
     // Filter those results to only videos (no livestreams or playlists)
     const videos = results.items.filter(x => x.type === "video");
@@ -279,26 +288,26 @@ async function search( textChannel, msg, query, playnext ) {
         message += `${i+1} - [${videos[i].title}](${videos[i].url})\n`;
         searchResults.push(videos[i].url);
     }
-    bot.createMessage(textChannel, {
+    bot.createMessage(textChannelID, {
         embed: {
             title: "Search results",
             description: message
         }
     });
 
-    tuple = [playnext, searchResults]
+    var tuple = [playnext, searchResults, msg.channel.id]
     searchMap.set( msg.author.id, tuple );
     //respond = msg;
 
 }
 
 // Remove the requested song from the queue
-async function remove( textChannel, n, guildID ) {
-    q = getQueue( guildID );
+async function remove( textChannelID, n, guildID ) {
+    var q = getQueue( guildID );
     const removed = q.remove(n);
     var info = await ytdl.getBasicInfo(removed);
 
-    bot.createMessage(textChannel, {
+    bot.createMessage(textChannelID, {
         embed: {
             description: `Removed [${info.videoDetails.title}](${removed}) from the queue.`
         }
@@ -306,8 +315,8 @@ async function remove( textChannel, n, guildID ) {
 }
 
 // Display the queued songs in order
-async function showQueue( textChannel, guildID ) {
-    q = getQueue( guildID );
+async function showQueue( textChannelID, guildID ) {
+    var q = getQueue( guildID );
     var message = ``;
 
     for ( i = 0; i < q.size(); i++ ) {
@@ -315,7 +324,7 @@ async function showQueue( textChannel, guildID ) {
         message += `${i+1}: [${info.videoDetails.title}](${q.get(i)})\n`;
         
     }
-    bot.createMessage(textChannel, {
+    bot.createMessage(textChannelID, {
         embed: {
             title: "Queue",
             description: message
@@ -324,12 +333,12 @@ async function showQueue( textChannel, guildID ) {
 }
 
 // Join the voice chat and queue the song, then play the queued song
-async function join( textChannel, member, url, playnext, guildID) {
+async function join( textChannelID, member, url, playnext, guildID) {
 
     var voiceChannel = member.voiceState.channelID;
 
     if ( voiceChannel != null ) {
-        q = getQueue( guildID );
+        var q = getQueue( guildID );
         // Push to front or back of queue depending if this was invoked by playnext
         if( playnext ) {
             q.push(url);
@@ -338,19 +347,26 @@ async function join( textChannel, member, url, playnext, guildID) {
         }
         
         debugLog("Added song to the queue");
-        connection = await bot.joinVoiceChannel(voiceChannel);
-        // ******** potential bug found here, connection might fail     *********
-        // ******** and execution stops, not sure why yet               *********
-        debugLog("Joined VC");
-        play( connection, textChannel, url, guildID );
 
-        // Create event listener for connection errors
-        connection.on("error", async (err) => {
-            throwError("Connection", err);
+        const connection = bot.joinVoiceChannel(voiceChannel);
+        debugLog("Joined VC");
+
+        connection
+        .then( (connection) => {
+            play( connection, textChannelID, url, guildID );
+
+            // Create event listener for connection errors
+            connection.on("error", async (err) => {
+                throwError("Connection", err);
+            })
+        })
+        .catch( (err) => {
+            throwError("Join", err);
         })
 
+
     } else {
-        bot.createMessage(textChannel, {
+        bot.createMessage(textChannelID, {
             embed: {
                 description: `Join a voice channel to play music.`
             }
@@ -358,32 +374,41 @@ async function join( textChannel, member, url, playnext, guildID) {
     }
 }
 
-async function play( connection, textChannel, song, guildID ) {
+async function play( connection, textChannelID, url, guildID ) {
 
-    q = getQueue( guildID );
+    var q = getQueue( guildID );
 
     // Play the next song in the queue if nothing is currently playing,
     // Otherwise respond that the song has been added to the queue
-    if( !connection.playing ) {
+    if ( !connection.playing ) {
+        var nowPlaying;
         debugLog("Connection free, starting to play...");
         try {
+            
             // Get title for next song in the queue
             debugLog("Getting video info...");
-            const info = await ytdl.getBasicInfo(q.peek());
 
-            // Display the current song
-            var nowPlaying = await bot.createMessage(textChannel, {
-                embed: {
-                    description: `Now playing:  [${info.videoDetails.title}](${q.peek()})`
-                }
-            });
+            const info = ytdl.getBasicInfo(q.peek());
 
-            //
-            // Bot stopped somewhere here, no errors thrown
-            // 
+            info
+            .then( async (info) => {
+
+                // Display the current song
+                nowPlaying = await bot.createMessage(textChannelID, {
+                    embed: {
+                        description: `Now playing:  [${info.videoDetails.title}](${q.peek()})`
+                    }
+                });
+            })
+            .catch( (err) => {
+                throwError("Fetch", err);
+                play( connection, textChannelID, url, guildID );
+            })
+            
 
             // Download the next song in the queue and play it
             const stream = ytdl(q.peek(), { filter: "audioonly", highWaterMark: 1<<21, dlChunkSize: 1<<30 }).on('response', () => {
+
                 if ( !connection ){
                     debugLog("Connection not found");
                     return;
@@ -391,7 +416,7 @@ async function play( connection, textChannel, song, guildID ) {
 
                 // Retry connection a few times if it's not ready
                 var retries = 15;
-                while( !connection.ready && retries-- > 0) {
+                while ( !connection.ready && retries-- > 0) {
                     debugLog("Connection not ready. Retrying...");
                 }
                 
@@ -404,27 +429,25 @@ async function play( connection, textChannel, song, guildID ) {
                         debugLog("Removed song from queue")
                         q.dequeue();
                         
-                    } catch (error) {
-                        throwError("Player", error);
+                    } catch ( err ) {
+                        throwError("Player", err);
                     }
                 } else {
                     debugLog("Connection not ready");
                 }
             });
-
-            //     stream.on('progress', (x, y, z) => {
-            //         debugLog(`${x} - ${y} - ${z}`);
-            //     })
             
     
             // When a song ends, play the next song in the queue if there is one,
             // Otherwise, leave the voice channel
             connection.once('end', () => {
                 debugLog("Reached end of song");    
-                bot.deleteMessage( textChannel, nowPlaying.id );
+                bot.deleteMessage( textChannelID, nowPlaying.id ).catch( (err) => {
+                    throwError("Delete", err);
+                });
                 if ( !q.isEmpty() ){
                     debugLog("Playing next song in queue");
-                    play( connection, textChannel, q.peek(), guildID );
+                    play( connection, textChannelID, q.peek(), guildID );
                 } else {
                     bot.leaveVoiceChannel(connection.channelID);
                     debugLog("Disconnected from VC");
@@ -432,9 +455,9 @@ async function play( connection, textChannel, song, guildID ) {
             })
         
         // If there's an error while getting song info, it could be an age restricted video
-        } catch(err) {
+        } catch ( err ) {
             throwError("Youtube Fetch", err);
-            bot.createMessage(textChannel, {
+            bot.createMessage(textChannelID, {
                 embed: {
                     description: `Problem fetching info, video might be age-restricted.`
                 }
@@ -450,8 +473,8 @@ async function play( connection, textChannel, song, guildID ) {
     // Bot is playing something, so display the song that was queued
     } else {
         try {
-            const info = await ytdl.getBasicInfo(song);
-            bot.createMessage(textChannel, {
+            const info = await ytdl.getBasicInfo(url);
+            bot.createMessage(textChannelID, {
                 embed: {
                     description: `Queued:  [${info.videoDetails.title}](${q.end()})`
                 }
@@ -459,7 +482,7 @@ async function play( connection, textChannel, song, guildID ) {
         // Again, error with song info is probably an age restricted video
         } catch(err) {
             throwError("Youtube Fetch", err);
-            bot.createMessage(textChannel, {
+            bot.createMessage(textChannelID, {
                 embed: {
                     description: `Problem fetching info, video might be age-restricted.`
                 }
@@ -473,7 +496,7 @@ async function play( connection, textChannel, song, guildID ) {
 // Prints the error with the time & date
 function throwError(type, error) {
     var time = new Date();
-    console.error(`${type} Error at ${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
+    console.error(`${type} Error\n${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
     console.error(error);
 }
 
@@ -490,7 +513,7 @@ function debugLog(info) {
 
 function getQueue( guild ) {
     if ( !guildQueues.has(guild) ) {
-        q = new Queue;
+        var q = new Queue;
         guildQueues.set( guild, q );
     }
     return guildQueues.get(guild);

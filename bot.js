@@ -300,7 +300,7 @@ async function search( textChannelID, msg, query, playnext ) {
     //respond = msg;
 
     // Timeout search request after 15 seconds
-    setTimeout(() => {searchMap.delete(msg.author.id)}, 15000);
+    setTimeout(() => {searchMap.delete(msg.author.id)}, 30000);
 
 }
 
@@ -445,15 +445,25 @@ async function play( connection, textChannelID, url, guildID ) {
             // Otherwise, leave the voice channel
             connection.once('end', () => {
                 debugLog("Reached end of song");    
-                bot.deleteMessage( textChannelID, nowPlaying.id ).catch( (err) => {
-                    throwError("Delete", err);
-                });
+
+                // Delete the previous "Now Playing" message
+                if ( nowPlaying != null ) {
+                    bot.deleteMessage( textChannelID, nowPlaying.id ).catch( (err) => {
+                        throwError("Delete", err);
+                    });
+                }
+
+                // Play next song if queue isn't empty
                 if ( !q.isEmpty() ){
                     debugLog("Playing next song in queue");
                     play( connection, textChannelID, q.peek(), guildID );
-                } else {
-                    bot.leaveVoiceChannel(connection.channelID);
-                    debugLog("Disconnected from VC");
+                } else {  // Otherwise disconnect after idling for 30 seconds
+                    setTimeout(() => {
+                        if ( !connection.playing && q.isEmpty() ) {
+                            bot.leaveVoiceChannel(connection.channelID);
+                            debugLog("Disconnected from VC");
+                        }
+                    }, 30000);
                 }
             })
         

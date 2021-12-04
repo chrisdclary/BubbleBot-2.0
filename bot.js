@@ -299,6 +299,9 @@ async function search( textChannelID, msg, query, playnext ) {
     searchMap.set( msg.author.id, tuple );
     //respond = msg;
 
+    // Timeout search request after 15 seconds
+    setTimeout(() => {searchMap.delete(msg.author.id)}, 15000);
+
 }
 
 // Remove the requested song from the queue

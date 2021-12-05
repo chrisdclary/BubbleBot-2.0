@@ -342,20 +342,20 @@ async function join( textChannelID, member, url, playnext, guildID) {
 
     if ( voiceChannel != null ) {
         var q = getQueue( guildID );
-        // Push to front or back of queue depending if this was invoked by playnext
-        if( playnext ) {
-            q.push(url);
-        } else {
-            q.enqueue(url);
-        }
         
-        debugLog("Added song to the queue");
-
         const connection = bot.joinVoiceChannel(voiceChannel);
         debugLog("Joined VC");
 
         connection
         .then( (connection) => {
+            // Push to front or back of queue depending if this was invoked by playnext
+            if( playnext ) {
+                q.push(url);
+            } else {
+                q.enqueue(url);
+            }
+            debugLog("Added song to the queue");
+
             play( connection, textChannelID, url, guildID );
 
             // Create event listener for connection errors
@@ -365,6 +365,7 @@ async function join( textChannelID, member, url, playnext, guildID) {
         })
         .catch( (err) => {
             throwError("Join", err);
+            join( textChannelID, member, url, playnext, guildID );
         })
 
 

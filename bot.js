@@ -392,22 +392,27 @@ async function play( connection, textChannelID, url, guildID ) {
             // Get title for next song in the queue
             debugLog("Getting video info...");
 
-            const info = ytdl.getBasicInfo(q.peek());
-
-            info
-            .then( async (info) => {
-
-                // Display the current song
-                nowPlaying = await bot.createMessage(textChannelID, {
+            try {
+                const info = await ytdl.getBasicInfo(url);
+                bot.createMessage(textChannelID, {
                     embed: {
-                        description: `Now playing:  [${info.videoDetails.title}](${q.peek()})`
+                        description: `Queued:  [${info.videoDetails.title}](${q.end()})`
                     }
                 });
-            })
-            .catch( (err) => {
-                throwError("Fetch", err);
-                play( connection, textChannelID, url, guildID );
-            })
+            // Again, error with song info is probably an age restricted video
+            } catch(err) {
+                throwError("Youtube Fetch", err);
+                bot.createMessage(textChannelID, {
+                    embed: {
+                        description: `Problem fetching info, video might be age-restricted.`
+                    }
+                });
+                q.dequeue();
+                return;
+            }
+
+            
+            
             
 
             // Download the next song in the queue and play it

@@ -8,6 +8,8 @@ const { Collection, Message } = require('eris');
 
 const bot = new Eris(auth.token);
 
+const COOKIE = auth.cookie;
+
 bot.on("ready", () => {
     debugLog("Ready!")
 });
@@ -247,7 +249,7 @@ bot.on("messageCreate", async msg => {
                 });
             } else {
                 // Play the selected video as if they used the .play command
-                var connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
+                const connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
                 if ( !connection ) { // join vc
                     join( textChannelID, msg.member, searchResults[num-1], playnext, msg.guildID );
                 } else { // play song
@@ -393,30 +395,59 @@ async function play( connection, textChannelID, url, guildID ) {
             debugLog("Getting video info...");
 
             try {
-                const info = await ytdl.getBasicInfo(url);
-                bot.createMessage(textChannelID, {
-                    embed: {
-                        description: `Queued:  [${info.videoDetails.title}](${q.end()})`
-                    }
+                var info = ytdl.getBasicInfo(url, {
+                    requestOptions: {
+                        headers: {
+                            cookie: COOKIE,
+                        },
+                    },
                 });
-            // Again, error with song info is probably an age restricted video
+                info
+                .then( async (info) => {
+                    nowPlaying = await bot.createMessage(textChannelID, {
+                        embed: {
+                            description: `Now Playing:  [${info.videoDetails.title}](${q.end()})`
+                        }
+                    });
+                })
+                
+            // Throw error if we can't get video info
             } catch(err) {
+                // Send an error message to text channel
                 throwError("Youtube Fetch", err);
                 bot.createMessage(textChannelID, {
                     embed: {
-                        description: `Problem fetching info, video might be age-restricted.`
+                        description: `Problem fetching video info.`
                     }
                 });
+                // remove offending song from queue
                 q.dequeue();
+                // Delete "nowPlaying" message if it exists
+                if ( nowPlaying != null ) {
+                    bot.deleteMessage( textChannelID, nowPlaying.id ).catch( (err) => {
+                        throwError("Delete", err);
+                    });
+                }
+                // Leave VC if this was the last song in the queue
+                if ( q.isEmpty ){
+                    bot.leaveVoiceChannel(connection.channelID);
+                    debugLog("Disconnected from VC");
+                }
                 return;
             }
 
-            
-            
-            
 
             // Download the next song in the queue and play it
-            const stream = ytdl(q.peek(), { filter: "audioonly", highWaterMark: 1<<21, dlChunkSize: 1<<30 }).on('response', () => {
+            const stream = ytdl(q.peek(), { 
+                filter: "audioonly", 
+                highWaterMark: 1<<21, 
+                dlChunkSize: 1<<30, 
+                requestOptions: {
+                    headers: {
+                        cookie: COOKIE,
+                    },
+                },
+            }).on('response', () => {
 
                 if ( !connection ){
                     debugLog("Connection not found");

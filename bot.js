@@ -130,6 +130,9 @@ bot.on("messageCreate", async msg => {
                 // user's voice connection
                 var voiceChannel = msg.member.voiceState.channelID;
 
+                debugLog("Attempting to skip...");
+                debugLog(connection);
+                debugLog(voiceChannel);
                 
                 if ( !connection ) {
                     bot.createMessage(textChannelID, {
@@ -160,7 +163,8 @@ bot.on("messageCreate", async msg => {
                     if ( ytdl.validateURL(args[0])){
                         // If they entered a valid youtube url, play that directly from ytdl
                         const connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
-                        if ( !connection ) { // join vc
+                        if ( connection == null ) { // join vc
+                            debugLog("No connection found, joining VC");
                             join( textChannelID, msg.member, args[0], false, msg.guildID );
                         } else { // play song
                             var q = getQueue( msg.guildID );
@@ -190,7 +194,7 @@ bot.on("messageCreate", async msg => {
                     if ( ytdl.validateURL(args[0])){
                         // If they entered a valid youtube url, play that directly from ytdl
                         const connection = bot.voiceConnections.find(conn => conn.id === msg.guildID);
-                        if ( !connection ) { // join vc
+                        if ( connection == null ) { // join vc
                             join( textChannelID, msg.member, args[0], true, msg.guildID );
                         } else { // play song
                             var q = getQueue( msg.guildID );
@@ -287,7 +291,7 @@ async function search( textChannelID, msg, query, playnext ) {
     var max = 5 < videos.length ? 5 : videos.length;
     
     for ( i = 0; i < max; i++ ) {
-        message += `${i+1} - [${videos[i].title}](${videos[i].url})\n`;
+        message += `${i+1} - [${videos[i].title}](${videos[i].url}) [ ${videos[i].duration} ]\n`;
         searchResults.push(videos[i].url);
     }
     bot.createMessage(textChannelID, {
@@ -363,6 +367,8 @@ async function join( textChannelID, member, url, playnext, guildID) {
             // Create event listener for connection errors
             connection.on("error", async (err) => {
                 throwError("Connection", err);
+                bot.leaveVoiceChannel(connection.channelID);
+                debugLog("Disconnected from VC due to error");
             })
         })
         .catch( (err) => {
@@ -389,152 +395,148 @@ async function play( connection, textChannelID, url, guildID ) {
     if ( !connection.playing ) {
         var nowPlaying;
         debugLog("Connection free, starting to play...");
-        try {
             
-            // Get title for next song in the queue
-            debugLog("Getting video info...");
+        // Get title for next song in the queue
+        debugLog("Getting video info...");
 
-            try {
-                var info = ytdl.getBasicInfo(url, {
-                    requestOptions: {
-                        headers: {
-                            cookie: COOKIE,
-                        },
-                    },
-                });
-                info
-                .then( async (info) => {
-                    nowPlaying = await bot.createMessage(textChannelID, {
-                        embed: {
-                            description: `Now Playing:  [${info.videoDetails.title}](${q.end()})`
-                        }
-                    });
-                })
-                
-            // Throw error if we can't get video info
-            } catch(err) {
-                // Send an error message to text channel
-                throwError("Youtube Fetch", err);
-                bot.createMessage(textChannelID, {
-                    embed: {
-                        description: `Problem fetching video info.`
-                    }
-                });
-                // remove offending song from queue
-                q.dequeue();
-                // Delete "nowPlaying" message if it exists
-                if ( nowPlaying != null ) {
-                    bot.deleteMessage( textChannelID, nowPlaying.id ).catch( (err) => {
-                        throwError("Delete", err);
-                    });
-                }
-                // Leave VC if this was the last song in the queue
-                if ( q.isEmpty ){
-                    bot.leaveVoiceChannel(connection.channelID);
-                    debugLog("Disconnected from VC");
-                }
-                return;
-            }
-
-
-            // Download the next song in the queue and play it
-            const stream = ytdl(q.peek(), { 
-                filter: "audioonly", 
-                highWaterMark: 1<<21, 
-                dlChunkSize: 1<<30, 
+        try {
+            var info = ytdl.getBasicInfo(url, {
                 requestOptions: {
                     headers: {
                         cookie: COOKIE,
                     },
                 },
-            }).on('response', () => {
-
-                if ( !connection ){
-                    debugLog("Connection not found");
-                    return;
-                }
-
-                // Retry connection a few times if it's not ready
-                var retries = 15;
-                while ( !connection.ready && retries-- > 0) {
-                    debugLog("Connection not ready. Retrying...");
-                }
-                
-                if ( connection.ready ) {
-                    debugLog("Connection ready after " + (15 - retries) + " retries.");
-                    try {
-                        debugLog("Playing song...");
-                        connection.play(stream);
-                        // If song starts playing without error, remove it from the queue
-                        debugLog("Removed song from queue")
-                        q.dequeue();
-                        
-                    } catch ( err ) {
-                        throwError("Player", err);
-                    }
-                } else {
-                    debugLog("Connection not ready");
-                }
             });
-            
-    
-            // When a song ends, play the next song in the queue if there is one,
-            // Otherwise, leave the voice channel
-            connection.once('end', () => {
-                debugLog("Reached end of song");    
-
-                // Delete the previous "Now Playing" message
-                if ( nowPlaying != null ) {
-                    bot.deleteMessage( textChannelID, nowPlaying.id ).catch( (err) => {
-                        throwError("Delete", err);
-                    });
-                }
-
-                // Play next song if queue isn't empty
-                if ( !q.isEmpty() ){
-                    debugLog("Playing next song in queue");
-                    play( connection, textChannelID, q.peek(), guildID );
-                } else {  // Otherwise disconnect after idling for 30 seconds
-                    setTimeout(() => {
-                        if ( !connection.playing && q.isEmpty() ) {
-                            bot.leaveVoiceChannel(connection.channelID);
-                            debugLog("Disconnected from VC");
-                        }
-                    }, 30000);
-                }
+            info
+            .then( async (info) => {
+                nowPlaying = await bot.createMessage(textChannelID, {
+                    embed: {
+                        description: `Now Playing:  [${info.videoDetails.title}](${q.end()})`
+                    }
+                });
             })
-        
-        // If there's an error while getting song info, it could be an age restricted video
-        } catch ( err ) {
+            
+        // Throw error if we can't get video info
+        } catch(err) {
+            // Send an error message to text channel
             throwError("Youtube Fetch", err);
             bot.createMessage(textChannelID, {
                 embed: {
-                    description: `Problem fetching info, video might be age-restricted.`
+                    description: `Problem fetching video info.`
                 }
             });
-            // Remove it from the queue so it doesn't cause problems
+            // remove offending song from queue
             q.dequeue();
-            if ( q.isEmpty )
+            // Delete "nowPlaying" message if it exists
+            if ( nowPlaying != null ) {
+                bot.deleteMessage( textChannelID, nowPlaying.id ).catch( (err) => {
+                    throwError("Delete", err);
+                });
+            }
+            // Leave VC if this was the last song in the queue
+            if ( q.isEmpty ){
                 bot.leaveVoiceChannel(connection.channelID);
+                debugLog("Disconnected from VC due to error");
+            }
+            return;
         }
+
+
+        // Download the next song in the queue and play it
+        const stream = ytdl(q.peek(), { 
+            filter: "audioonly", 
+            highWaterMark: 1<<21, 
+            dlChunkSize: 1<<30, 
+            requestOptions: {
+                headers: {
+                    cookie: COOKIE, // Cookie allows playback of age restricted content
+                },
+            },
+        }).on('response', () => {
+
+            if ( !connection ){
+                debugLog("Connection not found");
+                return;
+            }
+
+            // Retry connection a few times if it's not ready
+            var retries = 15;
+            while ( !connection.ready && retries-- > 0) {
+                debugLog("Connection not ready. Retrying...");
+            }
+            
+            if ( connection.ready ) {
+                debugLog("Connection ready after " + (15 - retries) + " retries.");
+                try {
+                    debugLog("Playing song...");
+                    connection.play(stream);
+                    // If song starts playing without error, remove it from the queue
+                    debugLog("Removed song from queue")
+                    q.dequeue();
+                    
+                } catch ( err ) {
+                    throwError("Player", err);
+                }
+            } else {
+                debugLog("Connection not ready");
+            }
+        });
+
+        stream.on('error', (err) => {
+            throwError("Stream", err);
+        })
+        
+
+        // When a song ends, play the next song in the queue if there is one,
+        // Otherwise, leave the voice channel
+        connection.once('end', () => {
+            debugLog("Reached end of song");    
+
+            // Delete the previous "Now Playing" message
+            if ( nowPlaying != null ) {
+                bot.deleteMessage( textChannelID, nowPlaying.id ).catch( (err) => {
+                    throwError("Delete", err);
+                });
+            }
+
+            // Play next song if queue isn't empty
+            if ( !q.isEmpty() ){
+                debugLog("Playing next song in queue");
+                play( connection, textChannelID, q.peek(), guildID );
+            } else {  // Otherwise disconnect after idling for 30 seconds
+                setTimeout(() => {
+                    if ( !connection.playing && q.isEmpty() ) {
+                        debugLog("Disconnecting from VC...", connection.channelID);
+                        bot.leaveVoiceChannel(connection.channelID);
+                    }
+                }, 30000);
+            }
+        })
+        
+        
         
 
         
     // Bot is playing something, so display the song that was queued
     } else {
         try {
-            const info = await ytdl.getBasicInfo(url);
+            const info = await ytdl.getBasicInfo(url, {
+                requestOptions: {
+                    headers: {
+                        cookie: COOKIE,
+                    },
+                },
+            });
             bot.createMessage(textChannelID, {
                 embed: {
                     description: `Queued:  [${info.videoDetails.title}](${q.end()})`
                 }
             });
-        // Again, error with song info is probably an age restricted video
         } catch(err) {
             throwError("Youtube Fetch", err);
             bot.createMessage(textChannelID, {
                 embed: {
-                    description: `Problem fetching info, video might be age-restricted.`
+                    description: `Problem fetching info.`
                 }
             });
             q.pop();
@@ -546,18 +548,21 @@ async function play( connection, textChannelID, url, guildID ) {
 // Prints the error with the time & date
 function throwError(type, error) {
     var time = new Date();
-    console.error(`${type} Error\n${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
+    console.error(`\n${type} Error\n${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
     console.error(error);
+    console.error('\n');
 }
 
-function debugLog(info) {
+function debugLog(message, info) {
     if (debug) {
         let buffer = "";
-        for(i = 60; i > info.length; i--) {
+        for(i = 60; i > message.length; i--) {
             buffer = buffer + " ";
         }
         var time = new Date();
-        console.log(`${info}${buffer}${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
+        console.log(`${message}${buffer}${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`);
+        if (info != null)
+            console.log(info);
     }
 }
 

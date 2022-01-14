@@ -1,0 +1,174 @@
+Ready!                                                      12/11/2021 - 12:0:49
+No connection found, joining VC                             12/11/2021 - 12:0:52
+Joined VC                                                   12/11/2021 - 12:0:52
+Added song to the queue                                     12/11/2021 - 12:0:53
+Connection free, starting to play...                        12/11/2021 - 12:0:53
+Getting video info...                                       12/11/2021 - 12:0:53
+Playing song...                                             12/11/2021 - 12:0:56
+Removed song from queue.                                    12/11/2021 - 12:0:56
+Added a song to the queue                                   12/11/2021 - 12:1:2
+Added a song to the queue                                   12/11/2021 - 12:3:18
+Added a song to the queue                                   12/11/2021 - 12:3:30
+Added a song to the queue                                   12/11/2021 - 12:3:40
+Added a song to the queue                                   12/11/2021 - 12:3:48
+Added a song to the queue                                   12/11/2021 - 12:3:58
+Added a song to the queue                                   12/11/2021 - 12:4:4
+Added a song to the queue                                   12/11/2021 - 12:4:14
+Added a song to the queue                                   12/11/2021 - 12:4:21
+Added a song to the queue                                   12/11/2021 - 12:4:28
+Added a song to the queue                                   12/11/2021 - 12:4:36
+Added a song to the queue                                   12/11/2021 - 12:4:45
+Reached end of song                                         12/11/2021 - 12:20:37
+Playing next song in queue                                  12/11/2021 - 12:20:37
+Connection free, starting to play...                        12/11/2021 - 12:20:37
+Getting video info...                                       12/11/2021 - 12:20:37
+Playing song...                                             12/11/2021 - 12:20:39
+Removed song from queue.                                    12/11/2021 - 12:20:39
+Reached end of song                                         12/11/2021 - 12:35:26
+Playing next song in queue                                  12/11/2021 - 12:35:26
+Connection free, starting to play...                        12/11/2021 - 12:35:26
+Getting video info...                                       12/11/2021 - 12:35:26
+Playing song...                                             12/11/2021 - 12:35:28
+Removed song from queue.                                    12/11/2021 - 12:35:29
+Reached end of song                                         12/11/2021 - 12:50:15
+Playing next song in queue                                  12/11/2021 - 12:50:15
+Connection free, starting to play...                        12/11/2021 - 12:50:15
+Getting video info...                                       12/11/2021 - 12:50:15
+Stream error, retrying...                                   12/11/2021 - 12:50:18
+Playing song...                                             12/11/2021 - 12:50:18
+Removed song from queue.                                    12/11/2021 - 12:50:19
+Stream error, retrying...                                   12/11/2021 - 13:18:59
+
+Connection Error
+12/11/2021 - 13:18:59
+Error: aborted
+    at connResetException (node:internal/errors:691:14)
+    at TLSSocket.socketCloseListener (node:_http_client:407:19)
+    at TLSSocket.emit (node:events:406:35)
+    at node:net:672:12
+    at TCP.done (node:_tls_wrap:580:7) {
+  code: 'ECONNRESET'
+}
+
+
+Reached end of song                                         12/11/2021 - 13:18:59
+Playing next song in queue                                  12/11/2021 - 13:18:59
+Connection free, starting to play...                        12/11/2021 - 13:18:59
+Getting video info...                                       12/11/2021 - 13:18:59
+Disconnected from VC due to error                           12/11/2021 - 13:18:59
+Connection not ready                                        12/11/2021 - 13:19:1
+Connection not ready                                        12/11/2021 - 13:19:1
+Joined VC                                                   12/11/2021 - 14:8:20
+Added song to the queue                                     12/11/2021 - 14:8:20
+Connection free, starting to play...                        12/11/2021 - 14:8:20
+Getting video info...                                       12/11/2021 - 14:8:20
+Playing song...                                             12/11/2021 - 14:8:22
+Removed song from queue.                                    12/11/2021 - 14:8:23
+Ready!                                                      12/11/2021 - 14:25:22
+Reached end of song                                         12/11/2021 - 15:15:37
+Playing next song in queue                                  12/11/2021 - 15:15:37
+Connection free, starting to play...                        12/11/2021 - 15:15:37
+Getting video info...                                       12/11/2021 - 15:15:37
+Playing song...                                             12/11/2021 - 15:15:40
+Removed song from queue.                                    12/11/2021 - 15:15:40
+Ready!                                                      12/11/2021 - 15:46:46
+Ready!                                                      12/11/2021 - 17:43:44
+Reached end of song                                         12/11/2021 - 18:16:39
+Playing next song in queue                                  12/11/2021 - 18:16:39
+Connection free, starting to play...                        12/11/2021 - 18:16:39
+Getting video info...                                       12/11/2021 - 18:16:39
+Playing song...                                             12/11/2021 - 18:16:42
+Removed song from queue.                                    12/11/2021 - 18:16:42
+Reached end of song                                         12/11/2021 - 19:26:5
+Playing next song in queue                                  12/11/2021 - 19:26:5
+Connection free, starting to play...                        12/11/2021 - 19:26:5
+Getting video info...                                       12/11/2021 - 19:26:5
+Playing song...                                             12/11/2021 - 19:26:8
+Removed song from queue.                                    12/11/2021 - 19:26:8
+Reached end of song                                         12/11/2021 - 19:49:40
+Playing next song in queue                                  12/11/2021 - 19:49:40
+Connection free, starting to play...                        12/11/2021 - 19:49:40
+Getting video info...                                       12/11/2021 - 19:49:40
+Playing song...                                             12/11/2021 - 19:49:43
+Removed song from queue.                                    12/11/2021 - 19:49:43
+Ready!                                                      12/11/2021 - 21:30:28
+Reached end of song                                         12/11/2021 - 21:40:13
+Playing next song in queue                                  12/11/2021 - 21:40:13
+Connection free, starting to play...                        12/11/2021 - 21:40:13
+Getting video info...                                       12/11/2021 - 21:40:13
+Playing song...                                             12/11/2021 - 21:40:16
+Removed song from queue.                                    12/11/2021 - 21:40:16
+Stream error, retrying...                                   12/11/2021 - 22:3:36
+
+Connection Error
+12/11/2021 - 22:3:36
+Error: aborted
+    at connResetException (node:internal/errors:691:14)
+    at TLSSocket.socketCloseListener (node:_http_client:407:19)
+    at TLSSocket.emit (node:events:406:35)
+    at node:net:672:12
+    at TCP.done (node:_tls_wrap:580:7) {
+  code: 'ECONNRESET'
+}
+
+
+Reached end of song                                         12/11/2021 - 22:3:36
+Playing next song in queue                                  12/11/2021 - 22:3:36
+Connection free, starting to play...                        12/11/2021 - 22:3:36
+Getting video info...                                       12/11/2021 - 22:3:36
+Disconnected from VC due to error                           12/11/2021 - 22:3:36
+Connection not ready                                        12/11/2021 - 22:3:39
+Connection not ready                                        12/11/2021 - 22:3:39
+Joined VC                                                   12/11/2021 - 22:9:38
+Added song to the queue                                     12/11/2021 - 22:9:38
+Connection free, starting to play...                        12/11/2021 - 22:9:38
+Getting video info...                                       12/11/2021 - 22:9:38
+Playing song...                                             12/11/2021 - 22:9:41
+Removed song from queue.                                    12/11/2021 - 22:9:41
+Reached end of song                                         12/11/2021 - 23:39:20
+Playing next song in queue                                  12/11/2021 - 23:39:20
+Connection free, starting to play...                        12/11/2021 - 23:39:20
+Getting video info...                                       12/11/2021 - 23:39:20
+Playing song...                                             12/11/2021 - 23:39:23
+Removed song from queue.                                    12/11/2021 - 23:39:23
+Playing song...                                             12/12/2021 - 0:35:40
+
+Connection Error
+12/12/2021 - 0:35:40
+Error: Already encoding
+    at Piper.encode (/mnt/c/Users/chris/Documents/BubbleBot/node_modules/eris/lib/voice/Piper.js:48:32)
+    at VoiceConnection.play (/mnt/c/Users/chris/Documents/BubbleBot/node_modules/eris/lib/voice/VoiceConnection.js:445:24)
+    at PassThrough.<anonymous> (/mnt/c/Users/chris/Documents/BubbleBot/bot.js:548:28)
+    at PassThrough.emit (node:events:394:28)
+    at PassThrough.emit (node:events:394:28)
+    at ClientRequest.<anonymous> (/mnt/c/Users/chris/Documents/BubbleBot/node_modules/miniget/dist/index.js:239:20)
+    at Object.onceWrapper (node:events:514:26)
+    at ClientRequest.emit (node:events:394:28)
+    at HTTPParser.parserOnIncomingClient [as onIncoming] (node:_http_client:621:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:128:17)
+
+
+Reached end of song                                         12/12/2021 - 0:35:40
+Playing next song in queue                                  12/12/2021 - 0:35:40
+Connection free, starting to play...                        12/12/2021 - 0:35:40
+Getting video info...                                       12/12/2021 - 0:35:40
+Disconnected from VC due to error                           12/12/2021 - 0:35:40
+
+Connection Error
+12/12/2021 - 0:35:40
+Error: Unable to encode source
+    at VoiceConnection.play (/mnt/c/Users/chris/Documents/BubbleBot/node_modules/eris/lib/voice/VoiceConnection.js:446:32)
+    at PassThrough.<anonymous> (/mnt/c/Users/chris/Documents/BubbleBot/bot.js:548:28)
+    at PassThrough.emit (node:events:394:28)
+    at PassThrough.emit (node:events:394:28)
+    at ClientRequest.<anonymous> (/mnt/c/Users/chris/Documents/BubbleBot/node_modules/miniget/dist/index.js:239:20)
+    at Object.onceWrapper (node:events:514:26)
+    at ClientRequest.emit (node:events:394:28)
+    at HTTPParser.parserOnIncomingClient [as onIncoming] (node:_http_client:621:27)
+    at HTTPParser.parserOnHeadersComplete (node:_http_common:128:17)
+    at HTTPParser.execute (<anonymous>)
+
+
+Disconnected from VC due to error                           12/12/2021 - 0:35:40
+Removed song from queue.                                    12/12/2021 - 0:35:40
+Connection not ready                                        12/12/2021 - 0:35:43

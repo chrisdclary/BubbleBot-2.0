@@ -4,6 +4,7 @@ const auth = require('./auth.json')
 const Eris = require('eris')
 const ytdl = require('ytdl-core')
 const ytsr = require('ytsr')
+const ytpl = require('ytpl')
 const { Collection, Message } = require('eris')
 
 const bot = new Eris(auth.token)
@@ -155,6 +156,9 @@ bot.on('messageCreate', async msg => {
       }
       case 'p': {
         if (args.length > 0) {
+          if (ytpl.validateID(args[0])) {
+            debugLog('Parsed input as a playlist')
+          }
           if (ytdl.validateURL(args[0])) { // If they entered a valid youtube url, play that directly from ytdl
             // See if there is an existing connection in this server
             let connection = bot.voiceConnections.find(conn => conn.id === msg.guildID)
@@ -604,6 +608,9 @@ function playStream (connection, url, guildID, retries = 0) {
 function throwError (type, error) {
   const time = new Date()
   console.error(`\n${type} Error\n${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`)
+  console.error(error.name)
+  console.error(error.cause)
+  console.error(error.lineNumber)
   console.error(error)
   console.error('\n')
 }

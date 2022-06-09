@@ -291,45 +291,10 @@ bot.on('messageCreate', async msg => {
   }
 })
 
-bot.on('messageReactionAdd', async (msg, emoji, userID) => {
-  const connection = bot.voiceConnections.find(conn => conn.id === msg.guildID)
-
-  if (userID != bot.user.id) {
-    if (nowPlaying != null && msg.id == nowPlaying.id && connection != null) { // user is using music controls
-      bot.removeMessageReaction(msg.channel.id, msg.id, emoji.name, userID).catch((err) => {
-        throwError('RemoveReact', err)
-      })
-      switch (emoji.name) {
-        case '🔽':
-          if (streamVolume > 0) {
-            streamVolume -= 2
-            connection.setVolume(streamVolume / 10)
-          }
-          break
-
-        case '🔼':
-          if (streamVolume < 20) {
-            streamVolume += 2
-            connection.setVolume(streamVolume / 10)
-          }
-          break
-
-        case '⏭':
-          connection.stopPlaying()
-          break
-
-        case '🇶':
-          showQueue(msg.channel.id, msg.guildID)
-          break
-        default:
-          break
-      }
-    }
-  }
-})
-
+// Generic error handler for client errors
 bot.on('error', (err) => {
   throwError('Bot', err)
+  bot.connect()
 })
 
 // Search youtube for results and display the top 5
@@ -470,10 +435,6 @@ async function play (member, connection, textChannelID, url, guildID) {
               description: `Now Playing:  [${info.videoDetails.title}](${q.peek()})`
             }
           })
-          bot.addMessageReaction(textChannelID, nowPlaying.id, '🔽')
-          bot.addMessageReaction(textChannelID, nowPlaying.id, '🔼')
-          bot.addMessageReaction(textChannelID, nowPlaying.id, '⏭')
-          bot.addMessageReaction(textChannelID, nowPlaying.id, '🇶')
         })
 
       // Throw error if we can't get video info
@@ -608,9 +569,6 @@ function playStream (connection, url, guildID, retries = 0) {
 function throwError (type, error) {
   const time = new Date()
   console.error(`\n${type} Error\n${time.getMonth() + 1}/${time.getDate()}/${time.getFullYear()} - ${time.getHours()}:${time.getMinutes()}:${time.getSeconds()}`)
-  console.error(error.name)
-  console.error(error.cause)
-  console.error(error.lineNumber)
   console.error(error)
   console.error('\n')
 }

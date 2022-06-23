@@ -160,13 +160,18 @@ bot.on('messageCreate', async msg => {
             debugLog('Parsed input as a playlist')
             const playlist = await ytpl(args[0])
             //playlist.items.forEach(video => /* Enqueue each URL */)
-            debugLog(playlist)
+            //debugLog(playlist.items[0].shortUrl)
+            addToQueue(msg, playlist.items, true)
+
           } 
-          if (ytdl.validateURL(args[0])) { // If they entered a valid youtube url, play that directly from ytdl
+          if (ytdl.validateURL(args[0])) { 
+            // If they entered a valid youtube url, play that directly from ytdl
             addToQueue(msg, args[0], true)
+
           } else {
             // If they entered something other than a URL, search youtube
             search(textChannelID, msg, args.join(' '), false)
+
           }
           
         } else { // If they didnt
@@ -232,11 +237,19 @@ bot.on('error', (err) => {
 async function addToQueue (msg, url, playnext) {
   q = getQueue(msg.guildID)
 
-  if (playnext) {
-    q.push(url)
-  } else {
-    q.enqueue(url)
+  // url is an object if we are adding a playlist
+  if (Array.isArray(url)) {
+    url.forEach(element => {q.enqueue(element.shortUrl); console.log(element.title)})
   }
+
+  else {
+    if (playnext) {
+      q.push(url)
+    } else {
+      q.enqueue(url)
+    }
+  }
+
   debugLog('Added a song to the queue')
 
   //Check connection
@@ -258,6 +271,7 @@ async function addToQueue (msg, url, playnext) {
     }
   }
 }
+
 
 // Search youtube for results and display the top 5
 async function search (textChannelID, msg, query, playnext) {
@@ -394,7 +408,7 @@ async function play (member, connection, textChannelID, url, guildID) {
               description: `Now Playing:  [${info.videoDetails.title}](${nextPlay})`
             }
           })
-          nowPlaying.set(guildID, np) 
+          nowPlaying.set(guildID, np.id) 
         })
 
       // Throw error if we can't get video info
@@ -410,7 +424,7 @@ async function play (member, connection, textChannelID, url, guildID) {
       q.dequeue()
       // Delete "nowPlaying" message if it exists
       if (nowPlaying.has(guildID) != null) {
-        bot.deleteMessage(textChannelID, nowPlaying.get(guildID).id).catch((err) => {
+        bot.deleteMessage(textChannelID, nowPlaying.get(guildID)).catch((err) => {
           throwError('Delete', err)
         })
         nowPlaying.delete(guildID)
@@ -437,7 +451,7 @@ async function play (member, connection, textChannelID, url, guildID) {
 
       // Delete the previous "Now Playing" message
       if (nowPlaying.has(guildID) != null) {
-        bot.deleteMessage(textChannelID, nowPlaying.get(guildID).id).catch((err) => {
+        bot.deleteMessage(textChannelID, nowPlaying.get(guildID)).catch((err) => {
           throwError('Delete', err)
         })
         nowPlaying.delete(guildID)
@@ -459,6 +473,7 @@ async function play (member, connection, textChannelID, url, guildID) {
 
     // Bot is playing something, so display the song that was queued
   } else {
+
     try {
       let info = await ytdl.getBasicInfo(url, {
         requestOptions: {
@@ -481,6 +496,8 @@ async function play (member, connection, textChannelID, url, guildID) {
       })
       q.pop()
     }
+    
+    
   }
 }
 
